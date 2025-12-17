@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPiece } from "@/lib/xanoClient";
 
 type PieceType = "blog" | "short-story" | "poem";
 
@@ -44,28 +45,19 @@ export default function WritePage() {
 
     setStatus({ kind: "saving" });
     try {
-      const res = await fetch("/api/pieces", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim() || "Untitled",
-          author: author.trim() || undefined,
-          type,
-          tags: tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean),
-          content,
-        }),
+      await createPiece({
+        title: title.trim() || "Untitled",
+        writer_name: author.trim() || "Unknown",
+        type,
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        content,
       });
 
-      const json = (await res.json()) as { slug?: string; error?: string };
-      if (!res.ok || !json.slug) {
-        throw new Error(json.error || "Failed to publish");
-      }
-
-      // Send user back to library and show a notice there.
-      window.location.href = "/?published=1";
+      // Send user back to library (works with GitHub Pages basePath).
+      window.location.href = new URL("../?published=1", window.location.href).toString();
     } catch (e) {
       setStatus({
         kind: "error",

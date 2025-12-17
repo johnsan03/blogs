@@ -1,21 +1,83 @@
-import { getPieceBySlug } from "@/lib/pieces";
-import { notFound } from "next/navigation";
+"use client";
 
-export default async function PiecePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const piece = await getPieceBySlug(slug);
-  if (!piece) notFound();
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { fetchPieceBySlug } from "@/lib/xanoClient";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import remarkHtml from "remark-html";
 
-  const typeLabel =
-    piece.type === "short-story"
+export default function PiecePage() {
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug;
+
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState<string | undefined>(undefined);
+  const [type, setType] = useState<"blog" | "short-story" | "poem">("blog");
+  const [tags, setTags] = useState<string[]>([]);
+  const [createdAt, setCreatedAt] = useState<string>(new Date().toISOString());
+  const [html, setHtml] = useState<string>("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!slug) return;
+    (async () => {
+      setLoading(true);
+      setNotFound(false);
+      try {
+        const piece = await fetchPieceBySlug(slug);
+        if (!piece) {
+          if (!cancelled) setNotFound(true);
+          return;
+        }
+        const processed = String(
+          await remark().use(remarkGfm).use(remarkHtml).process(piece.content),
+        );
+        if (cancelled) return;
+        setTitle(piece.title);
+        setAuthor(piece.author);
+        setType(piece.type);
+        setTags(piece.tags ?? []);
+        setCreatedAt(piece.createdAt);
+        setHtml(processed);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const typeLabel = useMemo(() => {
+    return type === "short-story"
       ? "Short story"
-      : piece.type === "blog"
+      : type === "blog"
         ? "Blog"
         : "Poem";
+  }, [type]);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/65 backdrop-blur">
+        Loading…
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/65 backdrop-blur">
+        Not found.{" "}
+        <Link className="underline" href="/">
+          Back to library
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <article className="mx-auto max-w-3xl">
@@ -24,21 +86,21 @@ export default async function PiecePage({
           <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/75 shadow-[0_1px_0_rgba(0,0,0,0.25)] backdrop-blur">
             {typeLabel}
           </span>
-          {(piece.author ?? "").trim() && (
+          {(author ?? "").trim() && (
             <span className="text-xs text-white/55">
-              By {piece.author}
+              By {author}
             </span>
           )}
           <span className="text-xs text-white/55">
-            {new Date(piece.createdAt).toLocaleString()}
+            {new Date(createdAt).toLocaleString()}
           </span>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          {piece.title}
+          {title}
         </h1>
-        {(piece.tags ?? []).length > 0 && (
+        {tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {piece.tags!.map((t) => (
+            {tags.map((t) => (
               <span
                 key={t}
                 className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/70"
@@ -52,16 +114,13 @@ export default async function PiecePage({
 
       <div
         className="prose max-w-none prose-headings:tracking-tight prose-p:leading-7 prose-headings:text-white prose-p:text-white/75 prose-a:text-cyan-200 prose-strong:text-white prose-hr:border-white/10 prose-pre:rounded-xl prose-pre:bg-black/40 prose-pre:text-white/80"
-        dangerouslySetInnerHTML={{ __html: piece.html }}
+        dangerouslySetInnerHTML={{ __html: html }}
       />
 
       <div className="mt-10">
-        <a
-          className="text-sm text-white/65 underline hover:text-white"
-          href="/"
-        >
+        <Link className="text-sm text-white/65 underline hover:text-white" href="/">
           ← Back to library
-        </a>
+        </Link>
       </div>
     </article>
   );

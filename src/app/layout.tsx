@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { BackgroundFX } from "@/app/_components/BackgroundFX";
+import Link from "next/link";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,7 @@ export default function RootLayout({
         <div className="min-h-screen text-zinc-950 dark:text-zinc-50">
           <header className="sticky top-0 z-20 border-b border-white/10 bg-black/25 backdrop-blur-xl">
             <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-              <a
+              <Link
                 href="/"
                 className="group flex items-center gap-2 font-semibold tracking-tight transition-opacity hover:opacity-90"
               >
@@ -42,20 +43,20 @@ export default function RootLayout({
                 <span className="text-sm text-white/90 sm:text-base">
                   Writing Studio
                 </span>
-              </a>
+              </Link>
               <nav className="flex items-center gap-2 text-sm">
-                <a
+                <Link
                   href="/"
                   className="rounded-full px-3 py-1.5 text-white/75 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   Library
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/write"
                   className="rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 px-3 py-1.5 font-medium text-black shadow-sm shadow-black/20 ring-1 ring-white/15 transition-all hover:-translate-y-0.5 hover:brightness-110 hover:shadow-md hover:shadow-black/25"
                 >
                   Write
-                </a>
+                </Link>
               </nav>
             </div>
           </header>
