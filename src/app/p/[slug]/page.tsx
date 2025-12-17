@@ -1,24 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchAllPieces } from "@/lib/xanoClient";
+import { fetchAllPiecesWithCache, fetchXanoRawWithCache } from "@/lib/xanoClient";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
 
 export async function generateStaticParams() {
   // Required for `output: "export"` so Next can pre-render each /p/[slug] page.
-  const pieces = await fetchAllPieces();
+  const pieces = await fetchAllPiecesWithCache("force-cache");
   return pieces.map((p) => ({ slug: p.slug }));
-}
-
-async function fetchXanoRaw() {
-  const url =
-    process.env.XANO_CONTENT_POST_URL ??
-    process.env.NEXT_PUBLIC_XANO_CONTENT_POST_URL ??
-    "https://x8ki-letl-twmt.n7.xano.io/api:WpZv-jLF/content_post";
-  const res = await fetch(url, { cache: "no-store" });
-  const data = (await res.json()) as unknown;
-  return { ok: res.ok, data };
 }
 
 export default async function PiecePage({
@@ -27,11 +17,11 @@ export default async function PiecePage({
   params: { slug: string };
 }) {
   const slug = params.slug;
-  const pieces = await fetchAllPieces();
+  const pieces = await fetchAllPiecesWithCache("force-cache");
   const listMatch = pieces.find((p) => p.slug === slug);
   if (!listMatch) notFound();
 
-  const { ok, data } = await fetchXanoRaw();
+  const { ok, data } = await fetchXanoRawWithCache("force-cache");
   if (!ok || !Array.isArray(data)) notFound();
 
   const row = (data as Array<Record<string, unknown>>).find((r) => {

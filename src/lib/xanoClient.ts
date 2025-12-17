@@ -84,6 +84,42 @@ export async function fetchAllPieces(): Promise<PieceListItem[]> {
   );
 }
 
+export async function fetchAllPiecesWithCache(
+  cache: RequestCache,
+): Promise<PieceListItem[]> {
+  const res = await fetch(getXanoUrl(), { cache });
+  const data = (await res.json()) as unknown;
+  if (!res.ok || !Array.isArray(data)) return [];
+
+  const pieces = (data as XanoPiece[])
+    .map((row) => {
+      const slug = normalizeSlug(row);
+      if (!slug) return null;
+      const title = typeof row.title === "string" ? row.title : slug;
+      const author =
+        typeof row.writer_name === "string" ? row.writer_name : undefined;
+      const type = row.type ?? "blog";
+      const tags = Array.isArray(row.tags) ? row.tags : [];
+      const createdAt = row.createdAt ?? new Date().toISOString();
+      const content = row.content ?? "";
+
+      return {
+        slug,
+        title,
+        author,
+        type,
+        tags,
+        createdAt,
+        excerpt: excerptFromMarkdown(content),
+      } satisfies PieceListItem;
+    })
+    .filter(Boolean) as PieceListItem[];
+
+  return pieces.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
 export async function fetchPieceBySlug(slug: string): Promise<Piece | null> {
   const all = await fetchAllPieces();
   const listMatch = all.find((p) => p.slug === slug);
@@ -97,6 +133,12 @@ export async function fetchPieceBySlug(slug: string): Promise<Piece | null> {
   const content = row?.content ?? "";
 
   return { ...listMatch, content };
+}
+
+export async function fetchXanoRawWithCache(cache: RequestCache) {
+  const res = await fetch(getXanoUrl(), { cache });
+  const data = (await res.json()) as unknown;
+  return { ok: res.ok, data };
 }
 
 export type CreatePieceInput = {
